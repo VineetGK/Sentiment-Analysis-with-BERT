@@ -1,0 +1,10 @@
+# Packages imported by "Sentiment Analysis with BERT (1).ipynb"
+# The notebook needs transformers < 4: it tuple-unpacks BertModel outputs,
+# uses transformers.AdamW(correct_bias=...) and pad_to_max_length.
+transformers<4
+torch
+numpy
+pandas
+scikit-learn
+matplotlib
+seaborn

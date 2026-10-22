@@ -1,106 +1,55 @@
-Sentiment Analysis with BERT Transformers
-Overview
-This project demonstrates how to perform Sentiment Analysis using the BERT (Bidirectional Encoder Representations from Transformers) model. Sentiment analysis is a key task in Natural Language Processing (NLP) that helps classify textual data into sentiment categories like positive or negative. In this project, we use Hugging Face's transformers library and a pre-trained bert-base-uncased model to classify text sentiment.
+# Sentiment Analysis with BERT
 
-Features
-Data Loading and Preprocessing: Handles text tokenization, padding, and truncation using BERT's tokenizer.
+Fine-tunes `bert-base-cased` to classify Google Play app reviews as **negative, neutral or positive** (3 classes).
+Everything is in `Sentiment Analysis with BERT (1).ipynb`.
 
-Model Training: Fine-tunes the pre-trained BERT model on a sentiment dataset.
+This notebook closely follows Venelin Valkov's tutorial "Sentiment Analysis with BERT and Hugging Face" (from his *Getting Things Done with PyTorch* series).
 
-Evaluation: Measures accuracy and generates a classification report for model performance.
+## Data
 
-Scalability: Supports large datasets by using DataLoader for efficient batch processing.
+- `reviews.csv`: 15,746 Google Play reviews of productivity apps (columns include `content`, `score`, `appId`).
+- **The CSV is not included in this repo.** Place a `reviews.csv` with at least `content` and `score` columns next to the notebook.
+- Labels come from the star rating: 1-2 = negative, 3 = neutral, 4-5 = positive.
+- Split: 90% train, 5% validation, 5% test (14,171 / 787 / 788 rows).
 
-Requirements
-To run this project, ensure you have the following installed:
+## Model and training
 
-Python 3.7 or higher
+- `BertTokenizer` (`bert-base-cased`), max length 160 tokens.
+- `SentimentClassifier`: `BertModel` pooled output, then dropout (p=0.3), then a linear layer with 3 outputs.
+- AdamW (lr 2e-5), linear schedule with no warmup, gradient clipping at 1.0, batch size 16, 10 epochs, cross-entropy loss.
+- The weights with the best validation accuracy are saved to `best_model_state.bin`.
 
-PyTorch
+## How to run
 
-Transformers library by Hugging Face
+The notebook was run on a GPU (Colab, Python 3.7).
 
-Scikit-learn
+1. `pip install -r requirements.txt` (note the old `transformers` version, see below).
+2. Put `reviews.csv` next to the notebook.
+3. Before running, define the two missing variables (see Known limitations), for example `RANDOM_SEED = 42` and a `sample_txt` string.
+4. Run all cells. Training took about 44 minutes on the GPU used.
 
-Pandas
+## Results (from the committed outputs)
 
-Install the required libraries using:
+| | Accuracy |
+|---|---|
+| Validation, epoch 1 | 0.778 |
+| Validation, epoch 10 (best) | 0.893 |
+| **Test** | **0.883** |
 
-pip install torch transformers scikit-learn pandas
-Dataset
-This project uses a toy dataset for demonstration purposes. Replace it with a real-world dataset like:
+Test classification report (788 reviews):
 
-IMDb Reviews Dataset
+| Class | Precision | Recall | F1 |
+|---|---|---|---|
+| negative | 0.89 | 0.87 | 0.88 |
+| neutral | 0.83 | 0.85 | 0.84 |
+| positive | 0.92 | 0.93 | 0.92 |
 
-Amazon Reviews Dataset
+Neutral reviews are the hardest class.
 
-Each dataset should have:
+## Known limitations
 
-Text: The content to classify.
-
-Label: Sentiment labels (e.g., 0 for negative, 1 for positive).
-
-How It Works
-1. Data Preprocessing
-Tokenizes text using the BertTokenizer from Hugging Face.
-
-Converts text into input IDs and attention masks.
-
-Encodes labels into tensors for training.
-
-2. Model Training
-Fine-tunes the pre-trained bert-base-uncased model.
-
-Optimizes the model using the AdamW optimizer.
-
-Trains over multiple epochs, displaying loss per batch.
-
-3. Model Evaluation
-Predicts sentiments on the validation set.
-
-Measures accuracy and generates a classification report (precision, recall, F1-score).
-
-Key Files
-main.py: Contains the complete implementation of the project.
-
-requirements.txt: Lists all dependencies required to run the project.
-
-README.md: Documentation for the project.
-
-Example Usage
-Run the script:
-
-python main.py
-Expected Output:
-
-Training loss for each epoch.
-
-Final accuracy on the validation dataset.
-
-Classification report with precision, recall, and F1-score.
-
-Results
-On the provided dataset, the model achieves:
-
-Accuracy: Example ~85%
-
-Improvement Areas: Can further improve with hyperparameter tuning or additional training data.
-
-Future Enhancements
-Deployment: Deploy the model using Flask, FastAPI, or AWS SageMaker.
-
-Advanced Models: Experiment with models like RoBERTa, DistilBERT, or XLNet for better performance.
-
-Hyperparameter Tuning: Optimize learning rate, batch size, and other hyperparameters.
-
-Visualization: Add interactive dashboards using tools like Plotly or Streamlit.
-
-References
-Hugging Face Transformers Documentation
-
-PyTorch Documentation
-
-Scikit-learn Metrics
-
-Contributing
-Feel free to fork this repository and submit a pull request if you have suggestions for improvements or new features!
+- The notebook does not run top to bottom as committed: `RANDOM_SEED` (used in the split cell) and `sample_txt` (used in the tokenizer demo) are never defined, and `reviews.csv` is not in the repo.
+- Needs `transformers` 3.x or older. On v4+ it breaks: the model output is tuple-unpacked (`_, pooled_output = self.bert(...)`), `transformers.AdamW` (with `correct_bias`) has been removed, and `pad_to_max_length` is deprecated.
+- The test score uses the model in memory after the last epoch, not the saved `best_model_state.bin`. In this run the last epoch was also the best on validation, but that is not guaranteed.
+- The model overfits: training accuracy reaches 0.988 while validation loss rises from 0.51 (epoch 3) to 0.74 (epoch 10).
+- No package versions were recorded, and the run is not fully seeded.
